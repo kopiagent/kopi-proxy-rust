@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KOPI Proxy 计费管理</title>
+<style>
+:root {
+  --bg: #0f0f12;
+  --card: #1a1a22;
+  --card-hover: #22222d;
+  --border: #2a2a36;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #c8924a;
+  --accent-dim: #a07230;
+  --green: #4caf7a;
+  --red: #e05555;
+  --blue: #5599dd;
+  --radius: 10px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.hidden { display: none !important; }
+
+/* Login */
+#login-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+}
+.login-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px;
+  width: 380px;
+  max-width: 90vw;
+}
+.login-card h1 {
+  font-size: 22px;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+.login-card p {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.login-card input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 16px;
+  outline: none;
+  transition: border .2s;
+}
+.login-card input:focus { border-color: var(--accent); }
+.login-card button {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .2s;
+}
+.login-card button:hover { background: var(--accent-dim); }
+.login-error {
+  color: var(--red);
+  font-size: 13px;
+  margin-top: 12px;
+  display: none;
+}
+
+/* Dashboard layout */
+#dashboard { padding: 24px; max-width: 1400px; margin: 0 auto; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 20px; color: var(--accent); }
+.header .subtitle { color: var(--text-dim); font-size: 13px; }
+.header-right { display: flex; gap: 12px; align-items: center; }
+.header-right button {
+  padding: 8px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.header-right button:hover { background: var(--card-hover); }
+.header-right .logout-btn { color: var(--red); border-color: var(--red); }
+
+/* Stats cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.stat-card .label {
+  font-size: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 8px;
+}
+.stat-card .value {
+  font-size: 28px;
+  font-weight: 700;
+}
+.stat-card .value.accent { color: var(--accent); }
+.stat-card .value.green { color: var(--green); }
+.stat-card .value.blue { color: var(--blue); }
+
+/* Client table */
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.toolbar input {
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  flex: 1;
+  min-width: 200px;
+  outline: none;
+}
+.toolbar input:focus { border-color: var(--accent); }
+.toolbar button {
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toolbar button:hover { background: var(--accent-dim); }
+
+/* Table */
+.table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  padding: 12px 16px;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--card-hover); }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge.active { background: rgba(76, 175, 122, .15); color: var(--green); }
+.badge.inactive { background: rgba(224, 85, 85, .15); color: var(--red); }
+.client-name {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 500;
+}
+.client-name:hover { text-decoration: underline; }
+
+/* Progress bar */
+.progress-bar {
+  width: 120px;
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .3s;
+}
+.progress-fill.low { background: var(--green); }
+.progress-fill.med { background: var(--accent); }
+.progress-fill.high { background: var(--red); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  width: 500px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal h2 { font-size: 18px; margin-bottom: 16px; color: var(--accent); }
+.modal .close-btn {
+  float: right;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 20px;
+  cursor: pointer;
+}
+.modal label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+.modal input, .modal select, .modal textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.modal input:focus { border-color: var(--accent); }
+.modal .btn-primary {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modal .btn-primary:hover { background: var(--accent-dim); }
+.modal-result {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+}
+.modal-result.success { display: block; background: rgba(76, 175, 122, .15); color: var(--green); }
+.modal-result.error { display: block; background: rgba(224, 85, 85, .15); color: var(--red); }
+
+/* Usage list in modal */
+.usage-list {
+  margin-top: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.usage-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.usage-item:last-child { border-bottom: none; }
+.usage-item .model { font-weight: 600; }
+.usage-item .meta { color: var(--text-dim); margin-top: 4px; }
+
+/* Loading & Empty */
+.loading { text-align: center; padding: 40px; color: var(--text-dim); }
+.spinner {
+  display: inline-block;
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 200;
+  animation: fadeIn .2s;
+  max-width: 400px;
+}
+.toast.success { background: rgba(76, 175, 122, .9); color: #fff; }
+.toast.error { background: rgba(224, 85, 85, .9); color: #fff; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-card">
+    <h1>☕ KOPI Proxy</h1>
+    <p>计费管理后台</p>
+    <input type="password" id="admin-key-input" placeholder="输入 Admin API Key" autofocus
+           onkeydown="if(event.key==='Enter') doLogin()">
+    <button onclick="doLogin()">登录</button>
+    <div class="login-error" id="login-error">API Key 错误</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard" class="hidden">
+  <div class="header">
+    <div>
+      <h1>☕ 计费管理</h1>
+      <div class="subtitle">KOPI Proxy v2 — 智能路由 · Failover · 计费</div>
+    </div>
+    <div class="header-right">
+      <button id="refresh-btn" onclick="loadDashboard()">🔄 刷新</button>
+      <button class="logout-btn" onclick="doLogout()">退出</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <!-- Client List -->
+  <div class="section-title">
+    <span>客户列表</span>
+    <span style="font-size:12px;color:var(--text-dim)" id="client-count"></span>
+  </div>
+  <div class="toolbar">
+    <input type="text" id="search-input" placeholder="搜索客户名称或 Key Prefix..."
+           onkeydown="if(event.key==='Enter') loadClients()">
+    <button onclick="loadClients()">搜索</button>
+    <button onclick="showTopupModal()" style="background:var(--blue)">充值</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>名称</th>
+          <th>Key</th>
+          <th>状态</th>
+          <th>额度</th>
+          <th>已用</th>
+          <th>使用率</th>
+          <th>请求</th>
+          <th>创建时间</th>
+        </tr>
+      </thead>
+      <tbody id="clients-tbody"></tbody>
+    </table>
+  </div>
+  <div class="loading hidden" id="clients-loading"><span class="spinner"></span>加载中...</div>
+</div>
+
+<!-- Topup Modal -->
+<div id="topup-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('topup-modal')">&times;</button>
+    <h2>充值 Token</h2>
+    <label>客户 ID</label>
+    <input type="number" id="topup-client-id" placeholder="输入客户 ID">
+    <label>Token 数量</label>
+    <input type="number" id="topup-amount" placeholder="1000000" value="1000000">
+    <label>备注</label>
+    <input type="text" id="topup-note" placeholder="Admin topup">
+    <button class="btn-primary" onclick="doTopup()">确认充值</button>
+    <div class="modal-result" id="topup-result"></div>
+  </div>
+</div>
+
+<!-- Client Detail Modal -->
+<div id="detail-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal('detail-modal')">&times;</button>
+    <h2 id="detail-title">客户详情</h2>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '/v2/admin/api';
+
+function getAdminKey() {
+  return sessionStorage.getItem('admin_key') || '';
+}
+
+// ── Login ──
+function doLogin() {
+  const key = document.getElementById('admin-key-input').value.trim();
+  if (!key) return;
+  sessionStorage.setItem('admin_key', key);
+  loadDashboard();
+}
+
+function doLogout() {
+  sessionStorage.removeItem('admin_key');
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('admin-key-input').value = '';
+}
+
+// ── Toast ──
+function toast(msg, type) {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── API helper ──
+async function api(path, opts = {}) {
+  const key = getAdminKey();
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
+    method: opts.method || 'GET',
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) {
+    toast('Admin API Key 无效，请重新登录', 'error');
+    doLogout();
+    return null;
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error?.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Dashboard ──
+async function loadDashboard() {
+  // Check auth
+  const key = getAdminKey();
+  if (!key) {
+    document.getElementById('dashboard').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+    return;
+  }
+
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+
+  try {
+    const [stats, clients] = await Promise.all([
+      api('/stats'),
+      api('/clients?limit=200'),
+    ]);
+
+    if (!stats || !clients) return;
+
+    renderStats(stats);
+    renderClients(clients);
+    document.getElementById('client-count').textContent = `共 ${clients.length} 个客户`;
+  } catch (e) {
+    toast('加载失败: ' + e.message, 'error');
+  }
+}
+
+// ── Stats ──
+function renderStats(stats) {
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="label">客户总数</div>
+      <div class="value accent">${stats.total_clients}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">活跃客户</div>
+      <div class="value green">${stats.active_clients}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">总请求</div>
+      <div class="value">${stats.total_requests.toLocaleString()}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Token 用量</div>
+      <div class="value">${(stats.total_tokens_used / 1000000).toFixed(1)}M</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">总收入</div>
+      <div class="value blue">$${stats.total_revenue.toFixed(2)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">今日请求 / Token</div>
+      <div class="value" style="font-size:18px">${stats.today_requests} / ${(stats.today_tokens / 1000000).toFixed(2)}M</div>
+    </div>
+  `;
+}
+
+// ── Clients ──
+function renderClients(clients) {
+  const tbody = document.getElementById('clients-tbody');
+  if (!clients.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text-dim)">暂无客户</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = clients.map(c => {
+    const pct = c.usage_percent.toFixed(1);
+    const barClass = c.usage_percent > 80 ? 'high' : c.usage_percent > 50 ? 'med' : 'low';
+    const remaining = c.token_limit > 0 ? (c.token_limit - c.token_used).toLocaleString() : '∞';
+    return `<tr>
+      <td>${c.id}</td>
+      <td class="client-name" onclick="showClientDetail(${c.id})">${escHtml(c.name)}</td>
+      <td style="font-family:monospace;font-size:11px;color:var(--text-dim)">${escHtml(c.key_prefix)}...</td>
+      <td><span class="badge ${c.is_active ? 'active' : 'inactive'}">${c.is_active ? '活跃' : '停用'}</span></td>
+      <td>${c.token_limit > 0 ? c.token_limit.toLocaleString() : '∞'}</td>
+      <td>${c.token_used.toLocaleString()}</td>
+      <td>
+        <div style="display:flex;align-items:center">
+          <div class="progress-bar"><div class="progress-fill ${barClass}" style="width:${Math.min(pct, 100)}%"></div></div>
+          <span style="font-size:11px;color:var(--text-dim)">${pct}%</span>
+        </div>
+        <span style="font-size:10px;color:var(--text-dim)">剩余 ${remaining}</span>
+      </td>
+      <td>${c.total_requests.toLocaleString()}</td>
+      <td style="font-size:11px;color:var(--text-dim)">${formatDate(c.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Client Detail ──
+async function showClientDetail(clientId) {
+  try {
+    const data = await api(`/clients/${clientId}`);
+    if (!data) return;
+
+    const { client, usage } = data;
+    const remaining = client.token_limit > 0 ? (client.token_limit - client.token_used).toLocaleString() : '∞';
+    const pct = client.usage_percent.toFixed(1);
+
+    document.getElementById('detail-title').textContent = `${escHtml(client.name)} (ID: ${client.id})`;
+    document.getElementById('detail-content').innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div><strong>Key:</strong> ${escHtml(client.key_prefix)}...</div>
+        <div><strong>状态:</strong> <span class="badge ${client.is_active ? 'active' : 'inactive'}">${client.is_active ? '活跃' : '停用'}</span></div>
+        <div><strong>额度:</strong> ${client.token_limit > 0 ? client.token_limit.toLocaleString() : '∞'}</div>
+        <div><strong>已用:</strong> ${client.token_used.toLocaleString()}</div>
+        <div><strong>剩余:</strong> ${remaining}</div>
+        <div><strong>使用率:</strong> ${pct}%</div>
+        <div><strong>总请求:</strong> ${client.total_requests.toLocaleString()}</div>
+        <div><strong>创建时间:</strong> ${formatDate(client.created_at)}</div>
+        ${client.last_used_at ? `<div><strong>最后使用:</strong> ${formatDate(client.last_used_at)}</div>` : ''}
+      </div>
+      <div style="margin-top:8px">
+        <button onclick="showTopupFor(${client.id})" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">充值</button>
+        <button onclick="doDeleteClient(${client.id})" style="padding:8px 16px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;margin-left:8px">删除客户</button>
+      </div>
+      <h3 style="margin-top:24px;margin-bottom:12px;font-size:14px">最近使用记录</h3>
+      ${usage.length === 0 ? '<div style="color:var(--text-dim);text-align:center;padding:20px">暂无使用记录</div>' : `
+      <div class="usage-list">
+        ${usage.map(u => `
+          <div class="usage-item">
+            <div><span class="model">${escHtml(u.model)}</span> @ ${escHtml(u.upstream)}</div>
+            <div class="meta">
+              输入 ${u.tokens_in.toLocaleString()} · 输出 ${u.tokens_out.toLocaleString()}
+              · $${u.cost.toFixed(4)} · ${u.latency_ms}ms
+              · ${formatDate(u.created_at)}
+            </div>
+          </div>
+        `).join('')}
+      </div>`}
+    `;
+
+    document.getElementById('detail-modal').classList.remove('hidden');
+  } catch (e) {
+    toast('加载客户详情失败: ' + e.message, 'error');
+  }
+}
+
+// ── Topup ──
+function showTopupModal() {
+  document.getElementById('topup-client-id').value = '';
+  document.getElementById('topup-amount').value = '1000000';
+  document.getElementById('topup-note').value = 'Admin topup';
+  document.getElementById('topup-result').className = 'modal-result';
+  document.getElementById('topup-result').textContent = '';
+  document.getElementById('topup-modal').classList.remove('hidden');
+}
+
+function showTopupFor(clientId) {
+  document.getElementById('topup-client-id').value = clientId;
+  document.getElementById('topup-amount').value = '1000000';
+  document.getElementById('topup-note').value = 'Admin topup';
+  document.getElementById('topup-result').className = 'modal-result';
+  document.getElementById('topup-result').textContent = '';
+  document.getElementById('detail-modal').classList.add('hidden');
+  document.getElementById('topup-modal').classList.remove('hidden');
+}
+
+async function doTopup() {
+  const clientId = parseInt(document.getElementById('topup-client-id').value);
+  const amount = parseInt(document.getElementById('topup-amount').value);
+  const note = document.getElementById('topup-note').value || 'Admin topup';
+
+  if (!clientId || !amount || amount <= 0) {
+    document.getElementById('topup-result').className = 'modal-result error';
+    document.getElementById('topup-result').textContent = '请输入有效的客户 ID 和数量';
+    return;
+  }
+
+  try {
+    const res = await api('/topup', {
+      method: 'POST',
+      body: { client_id: clientId, amount, note },
+    });
+
+    if (res) {
+      document.getElementById('topup-result').className = 'modal-result success';
+      document.getElementById('topup-result').textContent = `✅ 已为 ${res.client_id} 充值 ${res.amount.toLocaleString()} tokens`;
+      loadDashboard(); // refresh
+    }
+  } catch (e) {
+    document.getElementById('topup-result').className = 'modal-result error';
+    document.getElementById('topup-result').textContent = '❌ ' + e.message;
+  }
+}
+
+// ── Delete Client ──
+async function doDeleteClient(clientId) {
+  if (!confirm(`确定要删除客户 ${clientId} 吗？此操作不可撤销。`)) return;
+  try {
+    await api(`/clients/${clientId}`, { method: 'DELETE' });
+    toast('客户已删除', 'success');
+    closeModal('detail-modal');
+    loadDashboard();
+  } catch (e) {
+    toast('删除失败: ' + e.message, 'error');
+  }
+}
+
+// ── Helpers ──
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  try {
+    // Handle SQLite datetime format: "2026-07-03 03:50:24"
+    const parts = d.split(/[- :]/);
+    if (parts.length >= 3) {
+      const dt = new Date(parts[0], parts[1]-1, parts[2], parts[3]||0, parts[4]||0, parts[5]||0);
+      return dt.toLocaleDateString('zh-CN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+  } catch { /* fall through */ }
+  return d;
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  if (getAdminKey()) {
+    loadDashboard();
+  }
+});
+
+// Add DELETE route support: also load clients on search
+async function loadClients() {
+  const search = document.getElementById('search-input').value.trim();
+  const path = search ? `/clients?search=${encodeURIComponent(search)}` : '/clients?limit=200';
+  try {
+    const clients = await api(path);
+    if (clients) {
+      renderClients(clients);
+      document.getElementById('client-count').textContent = `共 ${clients.length} 个客户`;
+    }
+  } catch (e) {
+    toast('搜索失败: ' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
